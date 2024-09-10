@@ -12,9 +12,11 @@
     </div>
 
     <el-table :data="tableData" stripe style="width: 100%">
-      <el-table-column sortable prop="date" label="日期"></el-table-column>
-      <el-table-column prop="name" label="姓名"></el-table-column>
-      <el-table-column prop="address" label="地址"></el-table-column>
+      <el-table-column prop="name" label="家居名" sortable ></el-table-column>
+      <el-table-column prop="manufacturer" label="制造商"></el-table-column>
+      <el-table-column prop="price" label="价格"></el-table-column>
+      <el-table-column prop="sales" label="销量"></el-table-column>
+      <el-table-column prop="stock" label="库存"></el-table-column>
       <el-table-column fixed="right" label="操作" width="150">
         <template #default="scope">
           <el-button link type="primary" @click="handleEdit(scope.row)" >编辑</el-button>
@@ -75,31 +77,8 @@ export default {
     return {
       search: '',
       dialogVisible: false,
-      form: {
-
-      },
-      tableData: [
-        {
-          date: '2016-05-03',
-          name: 'Tom',
-          address: 'No. 189, Grove St, Los Angeles',
-        },
-        {
-          date: '2016-05-02',
-          name: 'Tom',
-          address: 'No. 189, Grove St, Los Angeles',
-        },
-        {
-          date: '2016-05-04',
-          name: 'Tom',
-          address: 'No. 189, Grove St, Los Angeles',
-        },
-        {
-          date: '2016-05-01',
-          name: 'Tom',
-          address: 'No. 189, Grove St, Los Angeles',
-        }
-      ]
+      form: {},
+      tableData: []
     }
   },
   methods: {
@@ -116,12 +95,24 @@ export default {
        * 2. this.form 代表 要提交的表单数据
        */
       request.post("/api/furniture/save", this.form).then(res => {
-        console.log("res =", res);
         this.dialogVisible = false;
+        // 在添加完家居后, 需要调用 list() 方法更新表单
+        this.query();
       }).catch(err => {
         console.log("err =", err)
-      })
+      });
+    },
+    query() {
+      request.get("/api/furniture/query").then(res => {
+        this.tableData = res;
+      }).catch(err => {
+        console.log("err =", err)
+      });
     }
+  },
+  //生命周期函数 - 创建 vue 实例前
+  created() {
+    this.query();
   }
 }
 </script>
