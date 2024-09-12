@@ -20,7 +20,7 @@ request.interceptors.request.use(config => {
 // 为 response 设置拦截器的处理
 // 可以在调用接口响应后，统一的处理返回结果
 request.interceptors.response.use(response => {
-    let res = response.data.data;
+    let res = response.data;
     // 如果返回的是文件, 就直接返回
     if (response.config.responseType === 'blob') {
         return res;

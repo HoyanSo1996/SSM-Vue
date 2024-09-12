@@ -12,12 +12,17 @@
     </div>
 
     <el-table :data="tableData" stripe style="width: 100%">
+      <el-table-column prop="id" label="id"></el-table-column>
       <el-table-column prop="name" label="家居名" sortable ></el-table-column>
       <el-table-column prop="manufacturer" label="制造商"></el-table-column>
       <el-table-column prop="price" label="价格"></el-table-column>
       <el-table-column prop="sales" label="销量"></el-table-column>
       <el-table-column prop="stock" label="库存"></el-table-column>
       <el-table-column fixed="right" label="操作" width="150">
+        <!-- 
+            使用<template #default=“scope”>可以在外部获取组件内的数据
+            scope 指的当前行数据的对象, 有多个属性, rowIndex 代表这行的索引值, row 代表这一行的数据
+        -->
         <template #default="scope">
           <el-button link type="primary" @click="handleEdit(scope.row)" >编辑</el-button>
           <el-button link type="primary" >删除</el-button>
@@ -55,7 +60,7 @@
       <template #footer>
         <div class="dialog-footer">
           <el-button @click="dialogVisible = false">Cancel</el-button>
-          <el-button type="primary" @click="save()">
+          <el-button type="primary" @click="save(form.id)">
             Confirm
           </el-button>
         </div>
@@ -82,35 +87,85 @@ export default {
     }
   },
   methods: {
-    handleEdit() {
-    },
     add() {
-      this.dialogVisible = true;
       // 这里将 form 属性置为空, 目的是为了每次打开新增家居弹窗时, 情况表单中的内容
       this.form = {}
+      this.dialogVisible = true;
     },
-    save() {
-      /** 
-       * 1. vuw.config.js 文件会将 /api/furniture/add 代理到 http://localhost:8080/SSM_Demo/furniture/add
-       * 2. this.form 代表 要提交的表单数据
+    handleEdit(row) {
+      /**
+       * 有两种方法获取回显值
+       * (1) 通过后端的 queryById 接口根据 scope.row.id 获取家居信息
+       * (2) 直接在前端的 tableData 中获取一行的数据 scope.row (有缺点: 可能和数据库中的数据不一致, 
+       *     例如其他人修改了数据, 但我们还没手动刷新页面就点击了编辑按钮, 那么此时弹窗的数据还是老数据)
        */
-      request.post("/api/furniture/save", this.form).then(res => {
-        this.dialogVisible = false;
-        // 在添加完家居后, 需要调用 list() 方法更新表单
-        this.query();
-      }).catch(err => {
-        console.log("err =", err)
-      });
+      // console.log("row =", row.name);
+      // 这里要对 row 对象进行深拷贝, 这样表格中的行数据和弹出框的数据就是独立的了.
+      // 否则该表弹出框的数据, 行数据也会进行改变
+      this.form = JSON.parse(JSON.stringify(row));
+      this.dialogVisible = true;
+    },
+    save(id) {
+      // 根据是否有 id 值来判断该弹出框是点击新增按钮的, 还是删除按钮的。
+      // console.log("id =", id);
+      if(id) {
+        request.put("/api/furniture/modify", this.form).then(res => {
+          if(res.code === 200) {
+            this.$message({ //弹出更新成功的消息框
+              type: "success",
+              message: "更新成功"
+            })
+          } else {
+            this.$message({//弹出更新失败信息
+              type: "error",
+              message: "更新失败"
+            })
+          }
+          this.query();  // 刷新页面
+          this.dialogVisible = false;
+        }).catch(err => {
+          console.log("err =", err);
+        });
+      } else {
+        /** 
+         * 1. vuw.config.js 文件会将 /api/furniture/add 代理到 http://localhost:8080/SSM_Demo/furniture/add
+         * 2. this.form 代表 要提交的表单数据
+         */
+        request.post("/api/furniture/add", this.form).then(res => {
+          if(res.code === 200) {
+            this.$message({ //弹出更新成功的消息框
+              type: "success",
+              message: "添加成功"
+            })
+          } else {
+            this.$message({//弹出更新失败信息
+              type: "error",
+              message: "添加失败"
+            })
+          }
+          // 在添加完家居后, 需要调用 list() 方法更新表单
+          this.query();
+          this.dialogVisible = false;
+        }).catch(err => {
+          console.log("err =", err);
+        });
+
+        /** 
+         * 这里不能把上面的 this.dialogVisible = false 和 this.query() 不能为了减少代码而提取到最后,
+         * 因为上面 request 用的是 Ajax 请求, 是异步的, 如果将上面两行代码提取出来, 那么会造成 Ajax 
+         * 还没返回结果, 就先关闭弹出窗和刷新页面的现象. 
+         */
+      }
     },
     query() {
       request.get("/api/furniture/query").then(res => {
-        this.tableData = res;
+        this.tableData = res.data;
       }).catch(err => {
         console.log("err =", err)
       });
     }
   },
-  //生命周期函数 - 创建 vue 实例前
+  // 生命周期函数 - 创建 vue 实例前
   created() {
     this.query();
   }
