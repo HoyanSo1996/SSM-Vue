@@ -1,4 +1,4 @@
-# vue-ssm
+# ssm-vue
 
 ## Project setup
 ```
