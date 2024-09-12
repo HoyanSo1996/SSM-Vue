@@ -18,14 +18,20 @@
       <el-table-column prop="price" label="价格"></el-table-column>
       <el-table-column prop="sales" label="销量"></el-table-column>
       <el-table-column prop="stock" label="库存"></el-table-column>
-      <el-table-column fixed="right" label="操作" width="150">
+      <el-table-column fixed="right" label="操作" width="160">
         <!-- 
             使用<template #default=“scope”>可以在外部获取组件内的数据
             scope 指的当前行数据的对象, 有多个属性, rowIndex 代表这行的索引值, row 代表这一行的数据
         -->
         <template #default="scope">
-          <el-button link type="primary" @click="handleEdit(scope.row)" >编辑</el-button>
-          <el-button link type="primary" >删除</el-button>
+          <el-button type="primary" @click="handleEdit(scope.row)" >编辑</el-button>
+          <!-- <el-button type="danger" @click="handleDelete(scope.row)">删除</el-button> -->
+          <!-- 如果点击取消, 就不会触发 handleDelete -->
+          <el-popconfirm title="确定删除?" @confirm="handleDelete(scope.row.id)">
+            <template #reference>
+              <el-button type="danger">删除</el-button>
+            </template>
+          </el-popconfirm>
         </template>
       </el-table-column>
     </el-table>
@@ -60,9 +66,7 @@
       <template #footer>
         <div class="dialog-footer">
           <el-button @click="dialogVisible = false">Cancel</el-button>
-          <el-button type="primary" @click="save(form.id)">
-            Confirm
-          </el-button>
+          <el-button type="primary" @click="save(form.id)">Confirm</el-button>
         </div>
       </template>
     </el-dialog>
@@ -156,6 +160,27 @@ export default {
          * 还没返回结果, 就先关闭弹出窗和刷新页面的现象. 
          */
       }
+    },
+    handleDelete(id) {
+      // console.log("id =", id);
+      request.delete(`/api/furniture/remove?id=${id}`).then(res => {
+        if(res.code === 200) {
+          this.$message({ 
+            type: "success",
+            message: "删除成功"
+           })
+        } else {
+          this.$message({
+            type: "error",
+            message: "删除失败"
+          })
+        }
+        // 刷新列表, 关闭弹窗
+        this.query();
+        this.dialogVisible = false;
+      }).catch(err => {
+        console.log("err =", err)
+      });
     },
     query() {
       request.get("/api/furniture/query").then(res => {
