@@ -70,6 +70,18 @@
         </div>
       </template>
     </el-dialog>
+
+    <div style="margin: 30px">
+      <el-pagination
+        v-model:current-page="currentPage"
+        v-model:page-size="pageSize"
+        :page-sizes="[5, 10]"
+        :total="total"
+        layout="total, sizes, prev, pager, next, jumper"
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+      />
+    </div>
   </div>
 </template>
 
@@ -87,7 +99,11 @@ export default {
       search: '',
       dialogVisible: false,
       form: {},
-      tableData: []
+      tableData: [],
+      // 默认初始数据
+      currentPage: 1,
+      pageSize: 5,
+      total: 10
     }
   },
   methods: {
@@ -182,12 +198,45 @@ export default {
         console.log("err =", err)
       });
     },
+    // 普通查询
+    // query() {
+    //   request.get("/api/furniture/query").then(res => {
+    //     this.tableData = res.data;
+    //   }).catch(err => {
+    //     console.log("err =", err)
+    //   });
+    // },
+    // 分页查询
     query() {
-      request.get("/api/furniture/query").then(res => {
-        this.tableData = res.data;
+      request.get("/api/furniture/page", {
+        params: {
+          pageNo: this.currentPage,
+          pageSize: this.pageSize,
+          name: ''
+        }
+      }).then(res => {
+        //console.log("res =", res);
+        this.tableData = res.data.list;
+        this.currentPage = res.data.pageNum;
+        this.pageSize = res.data.pageSize;
+        this.total = res.data.total;
+        // this.pageNo = res.data;
+
       }).catch(err => {
         console.log("err =", err)
       });
+    },
+    handleSizeChange() {
+      // 每当选择每页显示条数下拉栏, page-sizes 会给 page-size 属性传值, 并触发当前方法. 
+      // 由于 pageSize 值是双向绑定的, 所以 data() 中的 pageSize 的值也会改变
+      // 此时只需要手动触发 query 方法刷新页面就行了.
+      this.query();
+    },
+    handleCurrentChange() {
+      // 每当点击导航栏上的页码, 就会触发当前方法.
+      // 由于 currentPage 值是双向绑定的, 所以 data() 中的 currentPage 的值也会改变
+      // 此时只需要手动触发 query 方法刷新页面就行了.
+      this.query();
     }
   },
   // 生命周期函数 - 创建 vue 实例前
