@@ -5,10 +5,10 @@
       <el-button>其它</el-button>
     </div>
 
-    <!-- 搜索-->
+    <!-- 搜索框 -->
     <div style="margin: 10px 5px">
-      <el-input v-model="search" placeholder=" 请输入关键字" style="width:15%"></el-input>
-      <el-button style="margin-left: 10px" type="primary">查询</el-button>
+      <el-input v-model="search" placeholder="请输入关键字" style="width:15%"></el-input>
+      <el-button style="margin-left: 10px" type="primary" @click="query">查询</el-button>
     </div>
 
     <el-table :data="tableData" stripe style="width: 100%">
@@ -212,7 +212,7 @@ export default {
         params: {
           pageNo: this.currentPage,
           pageSize: this.pageSize,
-          name: ''
+          name: this.search
         }
       }).then(res => {
         //console.log("res =", res);
