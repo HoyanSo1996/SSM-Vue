@@ -43,22 +43,27 @@
       3. el-input v-model="form.name" 表示表单的 input 控件，名字为 name 需要和后台 Javabean[Furn] 属性一致.
          在前端中, 对象的属性是可以动态生成的(即先定义对象, 再定义属性), 所以不需要在 vue 对象的 form 属性中声明 name 等成员属性. 
     -->
-    <el-dialog title="添加家居" v-model="dialogVisible"  width="500">
+    <el-dialog title="添加家居" v-model="dialogVisible" width="500">
       <span>
-        <el-form :model="form" label-width="auto" style="max-width: 600px">
-          <el-form-item label="家居名">
+        <!-- 
+            (1) :rules="rules" 指定要使用规则
+            (2) ref="form" 指定创建的规则应用到 form 表单
+            (3) prop 指定各个规则与哪个 el-form-item 关联
+        -->
+        <el-form :model="form" :rules="rules" ref="form" label-width="auto" style="max-width: 600px">
+          <el-form-item label="家居名" prop="name">
             <el-input v-model="form.name" />
           </el-form-item>
-          <el-form-item label="制造商">
+          <el-form-item label="制造商" prop="manufacturer">
             <el-input v-model="form.manufacturer" />
           </el-form-item>
-          <el-form-item label="价格">
+          <el-form-item label="价格" prop="price">
             <el-input v-model="form.price" />
           </el-form-item>
-          <el-form-item label="销量">
+          <el-form-item label="销量" prop="sales">
             <el-input v-model="form.sales" />
           </el-form-item>
-          <el-form-item label="库存">
+          <el-form-item label="库存" prop="stock">
             <el-input v-model="form.stock" />
           </el-form-item>
         </el-form>
@@ -100,6 +105,27 @@ export default {
       dialogVisible: false,
       form: {},
       tableData: [],
+      // 表单校验规则
+      rules: {
+        name: [
+          { required: true, message: '请输入家居名', trigger: 'blur' }
+        ],
+        manufacturer: [
+          { required: true, message: '请输入制造商名', trigger: 'blur' }
+        ],
+        price: [
+          { required: true, message: '请输入价格', trigger: 'blur' },
+          { pattern: /^(([1-9]\d*)|(0))(\.\d+)?$/, message: '请输入合规数字', trigger: 'blur' }
+        ],
+        sales: [
+          { required: true, message: '请输入销量', trigger: 'blur' },
+          { pattern: /^(([1-9]\d*)|(0))$/, message: '请输入合规数字', trigger: 'blur' }
+        ],
+        stock: [
+          { required: true, message: '请输入库存', trigger: 'blur' },
+          { pattern: /^(([1-9]\d*)|(0))$/, message: '请输入合规数字', trigger: 'blur' }
+        ]
+      },
       // 默认初始数据
       currentPage: 1,
       pageSize: 5,
@@ -109,8 +135,13 @@ export default {
   methods: {
     add() {
       // 这里将 form 属性置为空, 目的是为了每次打开新增家居弹窗时, 情况表单中的内容
-      this.form = {}
+      this.form = {};
       this.dialogVisible = true;
+      
+      // 清空验证失败后的提示信息
+      if(this.$refs['form'] != undefined) {
+        this.$refs['form'].resetFields();
+      }
     },
     handleEdit(row) {
       /**
@@ -125,66 +156,80 @@ export default {
       this.form = JSON.parse(JSON.stringify(row));
       this.dialogVisible = true;
     },
-    save(id) {
-      // 根据是否有 id 值来判断该弹出框是点击新增按钮的, 还是删除按钮的。
-      // console.log("id =", id);
-      if(id) {
-        request.put("/api/furniture/modify", this.form).then(res => {
-          if(res.code === 200) {
-            this.$message({ //弹出更新成功的消息框
-              type: "success",
-              message: "更新成功"
-            })
-          } else {
-            this.$message({//弹出更新失败信息
-              type: "error",
-              message: "更新失败"
-            })
-          }
-          this.query();  // 刷新页面
-          this.dialogVisible = false;
-        }).catch(err => {
-          console.log("err =", err);
-        });
-      } else {
-        /** 
-         * 1. vuw.config.js 文件会将 /api/furniture/add 代理到 http://localhost:8080/SSM_Demo/furniture/add
-         * 2. this.form 代表 要提交的表单数据
-         */
-        request.post("/api/furniture/add", this.form).then(res => {
-          if(res.code === 200) {
-            this.$message({ //弹出更新成功的消息框
-              type: "success",
-              message: "添加成功"
-            })
-          } else {
-            this.$message({//弹出更新失败信息
-              type: "error",
-              message: "添加失败"
-            })
-          }
-          // 在添加完家居后, 需要调用 list() 方法更新表单
-          this.query();
-          this.dialogVisible = false;
-        }).catch(err => {
-          console.log("err =", err);
-        });
 
-        /** 
-         * 这里不能把上面的 this.dialogVisible = false 和 this.query() 不能为了减少代码而提取到最后,
-         * 因为上面 request 用的是 Ajax 请求, 是异步的, 如果将上面两行代码提取出来, 那么会造成 Ajax 
-         * 还没返回结果, 就先关闭弹出窗和刷新页面的现象. 
-         */
-      }
+    save(id) {
+      // 在点击 comfirm 按钮时, 对表单数据进行校验
+      this.$refs['form'].validate((valid => {
+        if (!valid) {
+          // 弹出更新失败信息
+          this.$message({
+            type: "error",
+            message: "表单验证失败, 不提交"
+          });
+          return false;
+
+        } else {
+          // 根据是否有 id 值来判断该弹出框是点击新增按钮的, 还是删除按钮的。
+          // console.log("id =", id);
+          if (id) {
+            request.put("/api/furniture/modify", this.form).then(res => {
+              if (res.code === 200) {
+                this.$message({ //弹出更新成功的消息框
+                  type: "success",
+                  message: "更新成功"
+                })
+              } else {
+                this.$message({//弹出更新失败信息
+                  type: "error",
+                  message: "更新失败"
+                })
+              }
+              this.query();  // 刷新页面
+              this.dialogVisible = false;
+            }).catch(err => {
+              console.log("err =", err);
+            });
+          } else {
+            /** 
+             * 1. vuw.config.js 文件会将 /api/furniture/add 代理到 http://localhost:8080/SSM_Demo/furniture/add
+             * 2. this.form 代表 要提交的表单数据
+             */
+            request.post("/api/furniture/add", this.form).then(res => {
+              if (res.code === 200) {
+                this.$message({ //弹出更新成功的消息框
+                  type: "success",
+                  message: "添加成功"
+                })
+              } else {
+                this.$message({//弹出更新失败信息
+                  type: "error",
+                  message: "添加失败"
+                })
+              }
+              // 在添加完家居后, 需要调用 list() 方法更新表单
+              this.query();
+              this.dialogVisible = false;
+            }).catch(err => {
+              console.log("err =", err);
+            });
+
+            /** 
+             * 这里不能把上面的 this.dialogVisible = false 和 this.query() 不能为了减少代码而提取到最后,
+             * 因为上面 request 用的是 Ajax 请求, 是异步的, 如果将上面两行代码提取出来, 那么会造成 Ajax 
+             * 还没返回结果, 就先关闭弹出窗和刷新页面的现象. 
+             */
+          }
+        }
+      }));
     },
     handleDelete(id) {
       // console.log("id =", id);
       request.delete(`/api/furniture/remove?id=${id}`).then(res => {
-        if(res.code === 200) {
-          this.$message({ 
+        if (res.code === 200) {
+          this.$message({
             type: "success",
             message: "删除成功"
-           })
+          })
         } else {
           this.$message({
             type: "error",
