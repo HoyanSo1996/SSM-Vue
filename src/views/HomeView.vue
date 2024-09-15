@@ -13,7 +13,7 @@
 
     <el-table :data="tableData" stripe style="width: 100%">
       <el-table-column prop="id" label="id"></el-table-column>
-      <el-table-column prop="name" label="家居名" sortable ></el-table-column>
+      <el-table-column prop="name" label="家居名" sortable></el-table-column>
       <el-table-column prop="manufacturer" label="制造商"></el-table-column>
       <el-table-column prop="price" label="价格"></el-table-column>
       <el-table-column prop="sales" label="销量"></el-table-column>
@@ -24,7 +24,7 @@
             scope 指的当前行数据的对象, 有多个属性, rowIndex 代表这行的索引值, row 代表这一行的数据
         -->
         <template #default="scope">
-          <el-button type="primary" @click="handleEdit(scope.row)" >编辑</el-button>
+          <el-button type="primary" @click="handleEdit(scope.row)">编辑</el-button>
           <!-- <el-button type="danger" @click="handleDelete(scope.row)">删除</el-button> -->
           <!-- 如果点击取消, 就不会触发 handleDelete -->
           <el-popconfirm title="确定删除?" @confirm="handleDelete(scope.row.id)">
@@ -43,7 +43,7 @@
       3. el-input v-model="form.name" 表示表单的 input 控件，名字为 name 需要和后台 Javabean[Furn] 属性一致.
          在前端中, 对象的属性是可以动态生成的(即先定义对象, 再定义属性), 所以不需要在 vue 对象的 form 属性中声明 name 等成员属性. 
     -->
-    <el-dialog title="添加家居" v-model="dialogVisible" width="500">
+    <el-dialog title="家居信息" v-model="dialogVisible" width="500">
       <span>
         <!-- 
             (1) :rules="rules" 指定要使用规则
@@ -52,19 +52,19 @@
         -->
         <el-form :model="form" :rules="rules" ref="form" label-width="auto" style="max-width: 600px">
           <el-form-item label="家居名" prop="name">
-            <el-input v-model="form.name" />
+            <el-input v-model="form.name" style="width: 60%;"/> {{serverValidErrors.name}}
           </el-form-item>
           <el-form-item label="制造商" prop="manufacturer">
-            <el-input v-model="form.manufacturer" />
+            <el-input v-model="form.manufacturer" style="width: 60%;"/> {{serverValidErrors.manufacturer}}
           </el-form-item>
           <el-form-item label="价格" prop="price">
-            <el-input v-model="form.price" />
+            <el-input v-model="form.price" style="width: 60%;"/> {{serverValidErrors.price}}
           </el-form-item>
           <el-form-item label="销量" prop="sales">
-            <el-input v-model="form.sales" />
+            <el-input v-model="form.sales" style="width: 60%;"/> {{serverValidErrors.sales}}
           </el-form-item>
           <el-form-item label="库存" prop="stock">
-            <el-input v-model="form.stock" />
+            <el-input v-model="form.stock" style="width: 60%;"/> {{serverValidErrors.stock}}
           </el-form-item>
         </el-form>
       </span>
@@ -105,6 +105,8 @@ export default {
       dialogVisible: false,
       form: {},
       tableData: [],
+      // 存放后端错误信息
+      serverValidErrors: {},
       // 表单校验规则
       rules: {
         name: [
@@ -137,11 +139,13 @@ export default {
       // 这里将 form 属性置为空, 目的是为了每次打开新增家居弹窗时, 情况表单中的内容
       this.form = {};
       this.dialogVisible = true;
-      
-      // 清空验证失败后的提示信息
-      if(this.$refs['form'] != undefined) {
+
+      // 清空 前端 验证失败后的提示信息
+      if (this.$refs['form'] != undefined) {
         this.$refs['form'].resetFields();
       }
+      // 清空 后端 验证失败后的提示信息
+      this.serverValidErrors = [];
     },
     handleEdit(row) {
       /**
@@ -160,6 +164,8 @@ export default {
     save(id) {
       // 在点击 comfirm 按钮时, 对表单数据进行校验
       this.$refs['form'].validate((valid => {
+        // 验证后端的验证逻辑 test
+        // valid = true;
         if (!valid) {
           // 弹出更新失败信息
           this.$message({
@@ -177,15 +183,21 @@ export default {
                 this.$message({ //弹出更新成功的消息框
                   type: "success",
                   message: "更新成功"
-                })
+                });
+                this.query();  // 刷新页面
+                this.dialogVisible = false;
+              } else if (res.code === 400) {
+                this.serverValidErrors.name = res.data.name;
+                this.serverValidErrors.manufacturer = res.data.manufacturer;
+                this.serverValidErrors.price = res.data.price;
+                this.serverValidErrors.sales = res.data.sales;
+                this.serverValidErrors.stock = res.data.stock;
               } else {
                 this.$message({//弹出更新失败信息
                   type: "error",
                   message: "更新失败"
                 })
               }
-              this.query();  // 刷新页面
-              this.dialogVisible = false;
             }).catch(err => {
               console.log("err =", err);
             });
@@ -199,16 +211,22 @@ export default {
                 this.$message({ //弹出更新成功的消息框
                   type: "success",
                   message: "添加成功"
-                })
+                });
+                // 在添加完家居后, 需要调用 list() 方法更新表单
+                this.query();
+                this.dialogVisible = false;
+              } else if (res.code === 400) {
+                this.serverValidErrors.name = res.data.name;
+                this.serverValidErrors.manufacturer = res.data.manufacturer;
+                this.serverValidErrors.price = res.data.price;
+                this.serverValidErrors.sales = res.data.sales;
+                this.serverValidErrors.stock = res.data.stock;
               } else {
                 this.$message({//弹出更新失败信息
                   type: "error",
                   message: "添加失败"
                 })
               }
-              // 在添加完家居后, 需要调用 list() 方法更新表单
-              this.query();
-              this.dialogVisible = false;
             }).catch(err => {
               console.log("err =", err);
             });
